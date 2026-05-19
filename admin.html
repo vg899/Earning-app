@@ -78,7 +78,7 @@
             
             <nav class="flex-1 space-y-1">
                 <button onclick="showSection('dashboard')" id="btn-dashboard" class="sidebar-active w-full flex items-center gap-4 px-6 py-4 transition-all">
-                    <i class="fas fa-grid-2 w-5"></i>
+                    <i class="fas fa-chart-pie w-5"></i>
                     <span class="text-sm font-bold">Dashboard</span>
                 </button>
                 <button onclick="showSection('videos')" id="btn-videos" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
@@ -107,30 +107,46 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto p-6 md:p-10 space-y-8">
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-slate-950/50">
             
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold font-poppins">Nucleus Terminal</h2>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">Operational Overview</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-600 uppercase font-bold">System Status</p>
+                        <p class="text-xs font-bold text-green-500 flex items-center gap-2 justify-end">
+                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                            ONLINE
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Dashboard Section -->
             <section id="section-dashboard" class="space-y-8">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="glass p-6 rounded-3xl">
+                    <div class="bg-indigo-600/5 border border-indigo-500/10 p-6 rounded-3xl">
                         <p class="text-gray-500 text-xs font-bold uppercase mb-2">Total Users</p>
-                        <h2 id="stat-users" class="text-3xl font-bold font-poppins">0</h2>
-                        <div class="mt-2 text-[10px] text-green-500">+12% from last week</div>
+                        <h2 id="stat-users" class="text-3xl font-bold font-poppins text-white">0</h2>
+                        <div class="mt-2 text-[10px] text-indigo-400">Database Entry</div>
                     </div>
-                    <div class="glass p-6 rounded-3xl">
+                    <div class="bg-primary/5 border border-primary/10 p-6 rounded-3xl">
                         <p class="text-gray-500 text-xs font-bold uppercase mb-2">Active Videos</p>
-                        <h2 id="stat-videos" class="text-3xl font-bold font-poppins">0</h2>
+                        <h2 id="stat-videos" class="text-3xl font-bold font-poppins text-white">0</h2>
                         <div class="mt-2 text-[10px] text-primary">Live Campaigns</div>
                     </div>
-                    <div class="glass p-6 rounded-3xl">
-                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Distributed Coins</p>
-                        <h2 id="stat-coins" class="text-3xl font-bold font-poppins">0</h2>
-                        <div class="mt-2 text-[10px] text-yellow-500">Total Economy</div>
+                    <div class="bg-yellow-500/5 border border-yellow-500/10 p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Economy Size</p>
+                        <h2 id="stat-coins" class="text-3xl font-bold font-poppins text-white font-mono">0</h2>
+                        <div class="mt-2 text-[10px] text-yellow-500">Total Coins</div>
                     </div>
-                    <div class="glass p-6 rounded-3xl">
-                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Pending Payments</p>
-                        <h2 id="stat-withdraws" class="text-3xl font-bold font-poppins">0</h2>
-                        <div class="mt-2 text-[10px] text-blue-500">Awaiting Action</div>
+                    <div class="bg-blue-500/5 border border-blue-500/10 p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Withdrawals</p>
+                        <h2 id="stat-withdraws" class="text-3xl font-bold font-poppins text-white">0</h2>
+                        <div class="mt-2 text-[10px] text-blue-500">Pending Req</div>
                     </div>
                 </div>
 
@@ -424,12 +440,18 @@
         }
 
         function initAdmin() {
-            loadStats();
-            loadRecentActivity();
-            loadVideos();
-            loadUsers();
-            loadWithdrawals();
-            loadBroadcasts();
+            try {
+                showSection('dashboard');
+                loadStats();
+                loadRecentActivity();
+                loadVideos();
+                loadUsers();
+                loadWithdrawals();
+                loadBroadcasts();
+            } catch (e) {
+                console.error("Initialization error:", e);
+                alert("SYSTEM INITIALIZATION FAILED: " + e.message);
+            }
         }
 
         function showSection(id) {
@@ -452,41 +474,53 @@
         function loadStats() {
             db.ref('users').on('value', snap => {
                 const total = snap.numChildren();
-                document.getElementById('stat-users').textContent = total;
+                const userEl = document.getElementById('stat-users');
+                if (userEl) userEl.textContent = total;
                 
                 let coins = 0;
-                snap.forEach(child => { coins += (child.val().coins || 0); });
-                document.getElementById('stat-coins').textContent = coins.toLocaleString();
-            });
+                snap.forEach(child => { 
+                    const data = child.val();
+                    if (data && data.coins) coins += data.coins; 
+                });
+                const coinEl = document.getElementById('stat-coins');
+                if (coinEl) coinEl.textContent = coins.toLocaleString();
+            }, err => console.error("Stats error (users):", err));
 
             db.ref('videos').on('value', snap => {
-                document.getElementById('stat-videos').textContent = snap.numChildren();
-            });
+                const videoEl = document.getElementById('stat-videos');
+                if (videoEl) videoEl.textContent = snap.numChildren();
+            }, err => console.error("Stats error (videos):", err));
 
             db.ref('withdrawals').on('value', snap => {
                 let pending = 0;
-                snap.forEach(child => { if(child.val().status === 'pending') pending++; });
-                document.getElementById('stat-withdraws').textContent = pending;
-            });
+                snap.forEach(child => { if(child.val() && child.val().status === 'pending') pending++; });
+                const withdrawEl = document.getElementById('stat-withdraws');
+                if (withdrawEl) withdrawEl.textContent = pending;
+            }, err => console.error("Stats error (withdrawals):", err));
         }
 
         function loadRecentActivity() {
             db.ref('watchHistory').limitToLast(5).on('value', snap => {
                 const container = document.getElementById('recent-activity');
+                if (!container) return;
                 container.innerHTML = '';
                 snap.forEach(child => {
                     const h = child.val();
-                    Object.values(h).forEach(item => {
-                        const html = `
-                            <div class="flex items-center justify-between text-sm py-2 border-b border-white/5">
-                                <span class="text-gray-400">UID: ${item.uid ? item.uid.substr(0, 5) : 'User'}</span>
-                                <span class="bg-green-500/10 text-green-500 px-2 rounded font-mono">+${item.reward}</span>
-                            </div>
-                        `;
-                        container.insertAdjacentHTML('afterbegin', html);
-                    });
+                    if (h && typeof h === 'object') {
+                        Object.values(h).forEach(item => {
+                            if (item && typeof item === 'object') {
+                                const html = `
+                                    <div class="flex items-center justify-between text-sm py-2 border-b border-white/5">
+                                        <span class="text-gray-400">UID: ${item.uid ? item.uid.substr(0, 5) : 'User'}</span>
+                                        <span class="bg-green-500/10 text-green-500 px-2 rounded font-mono">+${item.reward}</span>
+                                    </div>
+                                `;
+                                container.insertAdjacentHTML('afterbegin', html);
+                            }
+                        });
+                    }
                 });
-            });
+            }, err => console.error("Watch activity error:", err));
         }
 
         // Videos
