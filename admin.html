@@ -43,7 +43,7 @@
             </div>
             <div class="space-y-4">
                 <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Admin1@gmail.com">
-                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key">
+                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key (Harshvardhan)">
                 <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Initialize System</button>
             </div>
             <p class="text-[10px] text-center text-gray-700">AUTHORIZED ACCESS ONLY. ALL IP LOGS RECORDED.</p>
@@ -262,7 +262,31 @@
             if(!email || !pass) return alert('Credentials Required');
 
             try {
-                const cred = await auth.signInWithEmailAndPassword(email, pass);
+                let cred;
+                try {
+                    cred = await auth.signInWithEmailAndPassword(email, pass);
+                } catch (loginErr) {
+                    // If this is the specific admin user and they don't exist yet, try to register them
+                    if (email === 'Admin1@gmail.com' && pass === 'Harshvardhan' && loginErr.code === 'auth/user-not-found') {
+                        if (confirm("Primary Admin account not found. Create it now with these credentials?")) {
+                            cred = await auth.createUserWithEmailAndPassword(email, pass);
+                            // Set essential user data for the new admin
+                            await db.ref('users').child(cred.user.uid).set({
+                                name: 'Harshvardhan',
+                                email: email,
+                                coins: 0,
+                                rank: 'SYSTEM ADMIN',
+                                joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                                uid: cred.user.uid
+                            });
+                        } else {
+                            throw loginErr;
+                        }
+                    } else {
+                        throw loginErr;
+                    }
+                }
+                
                 const uid = cred.user.uid;
                 
                 // Check if any admins exist at all
