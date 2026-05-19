@@ -42,8 +42,8 @@
                 <p class="text-gray-500 text-sm">Main Authorization</p>
             </div>
             <div class="space-y-4">
-                <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Admin1@gmail.com">
-                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Mahak@9696">
+                <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="harshvardhantiwari39@gmail.com">
+                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Email Password">
                 <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white uppercase tracking-wider">Access Root</button>
             </div>
             <p class="text-[10px] text-center text-gray-700 uppercase tracking-widest">Authorized Access Only</p>
@@ -286,7 +286,7 @@
                     const isUserNotFound = loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential';
                     
                     // If this is the specific admin user and they don't exist yet, try to register them
-                    if (email === 'Admin1@gmail.com' && isUserNotFound) {
+                    if (email === 'harshvardhantiwari39@gmail.com' && isUserNotFound) {
                         if (confirm("Primary Admin account not found or credentials unrecognized. Would you like to initialize/register this account now?")) {
                             try {
                                 cred = await auth.createUserWithEmailAndPassword(email, pass);
@@ -316,30 +316,51 @@
                 
                 const uid = cred.user.uid;
                 
-                // Check if any admins exist at all
-                const adminsSnap = await db.ref('admins').once('value');
-                
-                if (!adminsSnap.exists()) {
-                    if (confirm("NO ADMINS DETECTED. Do you want to initialize this account as the PRIMARY ADMIN?")) {
-                        await db.ref('admins').child(uid).set(true);
-                        // Also set them as VIP
-                        await db.ref('users').child(uid).update({ isVIP: true, rank: 'SUPER ADMIN' });
-                        alert("PRIMARY ADMIN INITIALIZED. Proceeding to secondary authorization.");
-                        showStep2();
-                        return;
-                    } else {
-                        await auth.signOut();
-                        return;
+                // 1. First check if user is already an admin (Individual check is more rule-friendly)
+                let isAdmin = false;
+                try {
+                    const snap = await db.ref('admins').child(uid).once('value');
+                    if (snap.exists()) {
+                        isAdmin = true;
                     }
+                } catch (e) {
+                    console.warn("Individual admin check permission issue:", e.message);
                 }
 
-                // Normal verification if admins exist
-                const snap = await db.ref('admins').child(uid).once('value');
-                if (snap.exists()) {
+                if (isAdmin) {
                     showStep2();
-                } else {
+                    return;
+                }
+
+                // 2. If not admin, check if any admins exist at all (Bootstrap check)
+                try {
+                    const adminsSnap = await db.ref('admins').once('value');
+                    
+                    if (!adminsSnap.exists()) {
+                        if (confirm("NO ADMINS DETECTED. Do you want to initialize this account as the PRIMARY ADMIN?")) {
+                            await db.ref('admins').child(uid).set(true);
+                            // Also set them as VIP in user node
+                            await db.ref('users').child(uid).update({ isVIP: true, rank: 'SUPER ADMIN' });
+                            alert("PRIMARY ADMIN INITIALIZED. Proceeding to secondary authorization.");
+                            showStep2();
+                            return;
+                        } else {
+                            await auth.signOut();
+                            return;
+                        }
+                    } else {
+                        // List exists but user is not in it
+                        alert('ACCESS DENIED: ACCOUNT NOT AUTHORIZED');
+                        await auth.signOut();
+                    }
+                } catch (e) {
+                    // Handle permission_denied specifically
+                    if (e.message.toLowerCase().includes('permission_denied') || e.code === 'PERMISSION_DENIED') {
+                        alert("SECURITY ALERT: Your account is not recognized as an admin. If this is a new setup, ensure your Firebase Realtime Database rules allow the first user to initialize ('.read': 'true' for check).");
+                    } else {
+                        alert('SYSTEM ERROR: ' + e.message);
+                    }
                     await auth.signOut();
-                    alert('ACCESS DENIED: ACCOUNT NOT IN ELITE REGISTRY');
                 }
             } catch (err) {
                 alert('SYSTEM ERROR: ' + err.message);
