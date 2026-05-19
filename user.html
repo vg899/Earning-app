@@ -615,6 +615,7 @@
                 if (user) {
                     currentUser = user;
                     loadUserData(user.uid);
+                    loadBroadcasts();
                     document.getElementById('auth-container').classList.add('hidden');
                     document.getElementById('app-content').classList.remove('hidden');
                 } else {
@@ -1161,6 +1162,17 @@
         }
 
         // Utils
+        function loadBroadcasts() {
+            db.ref('broadcasts').limitToLast(1).on('child_added', snap => {
+                const b = snap.val();
+                // Avoid showing old broadcasts if they are very old (optional check)
+                const now = Date.now();
+                if (now - b.timestamp < 3600000) { // Within 1 hour
+                    showToast(`📢 ${b.title}: ${b.message}`, 'info');
+                }
+            });
+        }
+
         function showToast(msg, type = 'success') {
             const toast = document.getElementById('toast');
             const icon = document.getElementById('toast-icon');

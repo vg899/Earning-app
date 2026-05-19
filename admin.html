@@ -205,8 +205,13 @@
             <section id="section-users" class="hidden space-y-8">
                 <h2 class="text-2xl font-bold font-poppins">User Database</h2>
                 <div class="glass p-4 rounded-2xl flex gap-4">
-                    <input type="text" placeholder="Search by UID or Name..." class="flex-1 bg-transparent px-4 focus:outline-none">
-                    <button class="bg-white text-dark px-6 py-2 rounded-xl font-bold">Filter</button>
+                    <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search by UID, Name or Email..." class="flex-1 bg-transparent px-4 focus:outline-none">
+                    <select id="user-rank-filter" onchange="filterUsers()" class="bg-slate-900 text-white px-4 py-2 rounded-xl focus:outline-none border border-slate-800">
+                        <option value="all">All Ranks</option>
+                        <option value="NEWBIE">Newbie</option>
+                        <option value="VIP">VIP</option>
+                        <option value="SUPER ADMIN">Super Admin</option>
+                    </select>
                 </div>
                 
                 <div class="glass rounded-3xl overflow-hidden">
@@ -216,7 +221,7 @@
                                 <th class="p-6">User</th>
                                 <th class="p-6">Balance</th>
                                 <th class="p-6">Rank</th>
-                                <th class="p-6">Actions</th>
+                                <th class="p-6 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="user-list">
@@ -244,6 +249,36 @@
                             <!-- JS Inject -->
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Notifications / Broadcast Section -->
+            <section id="section-notifications" class="hidden space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold font-poppins">System Broadcast</h2>
+                </div>
+                <div class="glass p-8 rounded-3xl space-y-6 max-w-2xl">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest">Message Title</label>
+                            <input type="text" id="notif-title" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none mt-2" placeholder="Urgent Update">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest">Message Content</label>
+                            <textarea id="notif-message" rows="4" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none mt-2" placeholder="Write your message to all users..."></textarea>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="sendBroadcast()" class="flex-1 bg-primary py-4 rounded-xl font-bold shadow-lg shadow-primary/20">Send to All Users</button>
+                            <button onclick="clearNotifInputs()" class="px-8 bg-slate-800 py-4 rounded-xl font-bold">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold">Sent History</h3>
+                    <div id="notif-list" class="space-y-3">
+                        <!-- JS Inject -->
+                    </div>
                 </div>
             </section>
 
@@ -394,15 +429,23 @@
             loadVideos();
             loadUsers();
             loadWithdrawals();
+            loadBroadcasts();
         }
 
         function showSection(id) {
-            ['dashboard', 'videos', 'users', 'withdrawals', 'notifications'].forEach(s => {
-                document.getElementById(`section-${s}`).classList.add('hidden');
-                document.getElementById(`btn-${s}`).classList.remove('sidebar-active');
+            const sections = ['dashboard', 'videos', 'users', 'withdrawals', 'notifications'];
+            sections.forEach(s => {
+                const sectionEl = document.getElementById(`section-${s}`);
+                const btnEl = document.getElementById(`btn-${s}`);
+                if (sectionEl) sectionEl.classList.add('hidden');
+                if (btnEl) btnEl.classList.remove('sidebar-active');
             });
-            document.getElementById(`section-${id}`).classList.remove('hidden');
-            document.getElementById(`btn-${id}`).classList.add('sidebar-active');
+            
+            const targetSection = document.getElementById(`section-${id}`);
+            const targetBtn = document.getElementById(`btn-${id}`);
+            
+            if (targetSection) targetSection.classList.remove('hidden');
+            if (targetBtn) targetBtn.classList.add('sidebar-active');
         }
 
         // Stats
@@ -501,46 +544,90 @@
         }
 
         // Users
+        let cachedUsers = [];
         function loadUsers() {
-            db.ref('users').limitToLast(50).on('value', snap => {
-                const container = document.getElementById('user-list');
+            db.ref('users').limitToLast(100).on('value', snap => {
+                cachedUsers = [];
                 const recentContainer = document.getElementById('recent-users');
-                container.innerHTML = '';
                 recentContainer.innerHTML = '';
 
                 snap.forEach(child => {
-                    const u = child.val();
-                    const html = `
-                        <tr class="border-b border-white/5">
-                            <td class="p-6 flex items-center gap-4">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-10 h-10 rounded-full">
-                                <div>
-                                    <p class="font-bold">${u.name}</p>
-                                    <p class="text-[10px] text-gray-500">${u.email}</p>
-                                </div>
-                            </td>
-                            <td class="p-6 font-mono text-yellow-500">${(u.coins || 0).toLocaleString()}</td>
-                            <td class="p-6"><span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase">${u.rank}</span></td>
-                            <td class="p-6 text-right">
-                                <button class="bg-blue-500/20 text-blue-500 p-2 rounded-lg"><i class="fas fa-edit"></i></button>
-                            </td>
-                        </tr>
-                    `;
-                    container.insertAdjacentHTML('afterbegin', html);
+                    const u = { ...child.val(), key: child.key };
+                    cachedUsers.push(u);
 
                     // For dashboard sidebar
                     const recentHtml = `
                         <div class="flex items-center gap-3">
                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-8 h-8 rounded-full">
                             <div class="flex-1">
-                                <p class="text-xs font-bold">${u.name}</p>
-                                <p class="text-[10px] text-gray-500">${u.email}</p>
+                                <p class="text-xs font-bold">${u.name || 'Anonymous'}</p>
+                                <p class="text-[10px] text-gray-600">${u.email || 'No Email'}</p>
                             </div>
+                            <span class="text-[10px] font-mono text-yellow-500">${(u.coins || 0).toLocaleString()}</span>
                         </div>
                     `;
                     recentContainer.insertAdjacentHTML('afterbegin', recentHtml);
                 });
+                renderUserTable(cachedUsers);
             });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase();
+            const rank = document.getElementById('user-rank-filter').value;
+            
+            const filtered = cachedUsers.filter(u => {
+                const matchesSearch = (u.name || '').toLowerCase().includes(query) || 
+                                    (u.email || '').toLowerCase().includes(query) || 
+                                    (u.uid || '').toLowerCase().includes(query);
+                const matchesRank = rank === 'all' || u.rank === rank;
+                return matchesSearch && matchesRank;
+            });
+            renderUserTable(filtered);
+        }
+
+        function renderUserTable(users) {
+            const container = document.getElementById('user-list');
+            container.innerHTML = '';
+            users.forEach(u => {
+                const html = `
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="p-6 flex items-center gap-4">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="font-bold">${u.name || 'Anonymous'}</p>
+                                <p class="text-[10px] text-gray-500">${u.email || 'No Email'}</p>
+                                <p class="text-[8px] text-gray-700 font-mono">${u.uid}</p>
+                            </div>
+                        </td>
+                        <td class="p-6 font-mono text-yellow-500">${(u.coins || 0).toLocaleString()}</td>
+                        <td class="p-6">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${u.rank === 'SUPER ADMIN' ? 'bg-primary/20 text-primary' : 'bg-white/10'}">${u.rank || 'NEWBIE'}</span>
+                        </td>
+                        <td class="p-6 text-right">
+                            <div class="flex justify-end gap-2">
+                                <button onclick="modifyCoins('${u.uid}')" class="bg-yellow-500/10 text-yellow-500 p-2 rounded-lg hover:bg-yellow-500/20"><i class="fas fa-coins"></i></button>
+                                <button onclick="deleteUser('${u.uid}')" class="bg-red-500/10 text-red-500 p-2 rounded-lg hover:bg-red-500/20"><i class="fas fa-user-minus"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                container.insertAdjacentHTML('afterbegin', html);
+            });
+        }
+
+        async function modifyCoins(uid) {
+            const amount = prompt('Enter amount to add (negative to subtract):');
+            if (amount && !isNaN(amount)) {
+                await db.ref('users').child(uid).child('coins').transaction(c => (c || 0) + parseInt(amount));
+                alert('Coins Updated');
+            }
+        }
+
+        async function deleteUser(uid) {
+            if (confirm('Permanently delete this user?')) {
+                await db.ref('users').child(uid).remove();
+            }
         }
 
         // Withdrawals
@@ -581,6 +668,61 @@
                 const w = snap.val();
                 await db.ref('users').child(w.uid).child('coins').transaction(c => c + w.amount);
                 await db.ref('withdrawals').child(id).update({ status: 'rejected' });
+            }
+        }
+
+        // Broadcast logic
+        async function sendBroadcast() {
+            const title = document.getElementById('notif-title').value;
+            const message = document.getElementById('notif-message').value;
+
+            if(!title || !message) return alert('Enter Title and Message');
+
+            try {
+                await db.ref('broadcasts').push({
+                    title,
+                    message,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                alert('Broadcast Sent Successfully!');
+                clearNotifInputs();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function clearNotifInputs() {
+            document.getElementById('notif-title').value = '';
+            document.getElementById('notif-message').value = '';
+        }
+
+        function loadBroadcasts() {
+            db.ref('broadcasts').on('value', snap => {
+                const container = document.getElementById('notif-list');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const b = child.val();
+                    const date = new Date(b.timestamp).toLocaleString();
+                    const html = `
+                        <div class="glass p-5 rounded-2xl relative group">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-bold text-white">${b.title}</h4>
+                                <span class="text-[10px] text-gray-600 font-mono">${date}</span>
+                            </div>
+                            <p class="text-sm text-gray-400 leading-relaxed">${b.message}</p>
+                            <button onclick="deleteBroadcast('${child.key}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-700 hover:text-red-500">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('afterbegin', html);
+                });
+            });
+        }
+
+        async function deleteBroadcast(id) {
+            if(confirm('Delete this broadcast history?')) {
+                await db.ref('broadcasts').child(id).remove();
             }
         }
 
