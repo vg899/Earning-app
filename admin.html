@@ -33,20 +33,36 @@
 
     <!-- Auth Protected Layer -->
     <div id="admin-auth" class="fixed inset-0 z-[100] bg-dark flex flex-col items-center justify-center p-6">
-        <div class="w-full max-w-md glass p-8 rounded-3xl space-y-6">
+        <div id="auth-step-1" class="w-full max-w-md glass p-8 rounded-3xl space-y-6">
             <div class="text-center">
                 <div class="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/30">
-                    <i class="fas fa-lock text-3xl text-primary"></i>
+                    <i class="fas fa-user-shield text-3xl text-primary"></i>
                 </div>
                 <h1 class="text-2xl font-bold font-poppins text-white">Nucleus Control</h1>
-                <p class="text-gray-500 text-sm">Elite Authorization Required</p>
+                <p class="text-gray-500 text-sm">Main Authorization</p>
             </div>
             <div class="space-y-4">
                 <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Admin1@gmail.com">
-                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key (9696)">
-                <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Initialize System</button>
+                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Account Password">
+                <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Verify Identity</button>
             </div>
-            <p class="text-[10px] text-center text-gray-700">AUTHORIZED ACCESS ONLY. ALL IP LOGS RECORDED.</p>
+            <p class="text-[10px] text-center text-gray-700 uppercase tracking-widest">Authorized Access Only</p>
+        </div>
+
+        <!-- Secondary Pin Protection -->
+        <div id="auth-step-2" class="hidden w-full max-w-md glass p-8 rounded-3xl space-y-6">
+            <div class="text-center">
+                <div class="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/30">
+                    <i class="fas fa-key text-3xl text-yellow-500"></i>
+                </div>
+                <h1 class="text-2xl font-bold font-poppins text-white">Security Terminal</h1>
+                <p class="text-gray-500 text-sm">Enter Access Code</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" maxlength="4" id="admin-pin" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-yellow-500 text-white text-center text-2xl tracking-[1em]" placeholder="****">
+                <button onclick="verifySecondaryAuth()" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold transition-all shadow-lg shadow-yellow-600/20 text-white uppercase tracking-wider">Initialize Portal</button>
+                <button onclick="location.reload()" class="w-full text-gray-500 text-xs font-bold uppercase hover:text-white transition-colors">Abort Access</button>
+            </div>
         </div>
     </div>
 
@@ -270,7 +286,7 @@
                     const isUserNotFound = loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential';
                     
                     // If this is the specific admin user and they don't exist yet, try to register them
-                    if (email === 'Admin1@gmail.com' && pass === '9696' && isUserNotFound) {
+                    if (email === 'Admin1@gmail.com' && isUserNotFound) {
                         if (confirm("Primary Admin account not found or credentials unrecognized. Would you like to initialize/register this account now?")) {
                             try {
                                 cred = await auth.createUserWithEmailAndPassword(email, pass);
@@ -308,8 +324,8 @@
                         await db.ref('admins').child(uid).set(true);
                         // Also set them as VIP
                         await db.ref('users').child(uid).update({ isVIP: true, rank: 'SUPER ADMIN' });
-                        alert("PRIMARY ADMIN INITIALIZED. Welcome to the Nucleus.");
-                        enterAdmin();
+                        alert("PRIMARY ADMIN INITIALIZED. Proceeding to secondary authorization.");
+                        showStep2();
                         return;
                     } else {
                         await auth.signOut();
@@ -320,13 +336,28 @@
                 // Normal verification if admins exist
                 const snap = await db.ref('admins').child(uid).once('value');
                 if (snap.exists()) {
-                    enterAdmin();
+                    showStep2();
                 } else {
                     await auth.signOut();
                     alert('ACCESS DENIED: ACCOUNT NOT IN ELITE REGISTRY');
                 }
             } catch (err) {
                 alert('SYSTEM ERROR: ' + err.message);
+            }
+        }
+
+        function showStep2() {
+            document.getElementById('auth-step-1').classList.add('hidden');
+            document.getElementById('auth-step-2').classList.remove('hidden');
+        }
+
+        function verifySecondaryAuth() {
+            const pin = document.getElementById('admin-pin').value;
+            if (pin === '9696') {
+                enterAdmin();
+            } else {
+                alert('INVALID ACCESS CODE. ACCESS DENIED.');
+                document.getElementById('admin-pin').value = '';
             }
         }
 
