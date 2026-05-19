@@ -43,7 +43,7 @@
             </div>
             <div class="space-y-4">
                 <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Admin1@gmail.com">
-                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key (Harshvardhan)">
+                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key (9696)">
                 <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Initialize System</button>
             </div>
             <p class="text-[10px] text-center text-gray-700">AUTHORIZED ACCESS ONLY. ALL IP LOGS RECORDED.</p>
@@ -270,7 +270,7 @@
                     const isUserNotFound = loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential';
                     
                     // If this is the specific admin user and they don't exist yet, try to register them
-                    if (email === 'Admin1@gmail.com' && pass === 'Harshvardhan' && isUserNotFound) {
+                    if (email === 'Admin1@gmail.com' && pass === '9696' && isUserNotFound) {
                         if (confirm("Primary Admin account not found or credentials unrecognized. Would you like to initialize/register this account now?")) {
                             try {
                                 cred = await auth.createUserWithEmailAndPassword(email, pass);
