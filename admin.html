@@ -77,23 +77,23 @@
             </div>
             
             <nav class="flex-1 space-y-1">
-                <button onclick="showSection('dashboard')" id="btn-dashboard" class="sidebar-active w-full flex items-center gap-4 px-6 py-4 transition-all">
+                <button type="button" onclick="showSection('dashboard')" id="btn-dashboard" class="sidebar-active w-full flex items-center gap-4 px-6 py-4 transition-all cursor-pointer">
                     <i class="fas fa-chart-pie w-5"></i>
                     <span class="text-sm font-bold">Dashboard</span>
                 </button>
-                <button onclick="showSection('videos')" id="btn-videos" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                <button type="button" onclick="showSection('videos')" id="btn-videos" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all cursor-pointer">
                     <i class="fas fa-video w-5"></i>
                     <span class="text-sm font-semibold">Campaigns</span>
                 </button>
-                <button onclick="showSection('users')" id="btn-users" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                <button type="button" onclick="showSection('users')" id="btn-users" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all cursor-pointer">
                     <i class="fas fa-users w-5"></i>
                     <span class="text-sm font-semibold">User base</span>
                 </button>
-                <button onclick="showSection('withdrawals')" id="btn-withdrawals" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                <button type="button" onclick="showSection('withdrawals')" id="btn-withdrawals" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all cursor-pointer">
                     <i class="fas fa-wallet w-5"></i>
                     <span class="text-sm font-semibold">Withdrawals</span>
                 </button>
-                <button onclick="showSection('notifications')" id="btn-notifications" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                <button type="button" onclick="showSection('notifications')" id="btn-notifications" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all cursor-pointer">
                     <i class="fas fa-bell w-5"></i>
                     <span class="text-sm font-semibold">Broadcast</span>
                 </button>
@@ -323,10 +323,22 @@
         const db = firebase.database();
 
         async function handleAdminLogin() {
+            const btn = event ? event.currentTarget : null;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i> Authenticating...';
+            }
+
             const email = document.getElementById('admin-email').value;
             const pass = document.getElementById('admin-password').value;
             
-            if(!email || !pass) return alert('Credentials Required');
+            if(!email || !pass) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Access Root';
+                }
+                return alert('Credentials Required');
+            }
 
             try {
                 let cred;
@@ -415,6 +427,11 @@
                 }
             } catch (err) {
                 alert('SYSTEM ERROR: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Access Root';
+                }
             }
         }
 
@@ -529,6 +546,12 @@
         }
 
         async function saveVideo() {
+            const btn = event ? event.currentTarget : null;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i> Saving...';
+            }
+
             const title = document.getElementById('v-title').value.trim();
             const ytId = document.getElementById('v-ytid').value.trim();
             const rewardInput = document.getElementById('v-reward').value;
@@ -538,6 +561,10 @@
             const duration = parseInt(durationInput) || 60; // Default 60s
 
             if(!title || !ytId || isNaN(reward)) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Campaign';
+                }
                 return alert('Please enter Title, YouTube ID, and a valid Reward amount.');
             }
 
@@ -560,6 +587,11 @@
             } catch (error) {
                 console.error("Save Video Error:", error);
                 alert('SYSTEM ERROR: Could not save campaign. ' + error.message);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Campaign';
+                }
             }
         }
 
