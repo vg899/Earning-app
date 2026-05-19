@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ViraWatch - Watch & Earn</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // indigo-500
+                        secondary: '#ec4899', // pink-500
+                        accent: '#8b5cf6', // violet-500
+                        dark: '#050508',
+                        glass: 'rgba(255, 255, 255, 0.05)',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-subtle': 'bounce 2s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- YouTube API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Motion (Simplified via CSS transitions for Vanilla JS) -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050508;
+            color: white;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1, h2, h3, .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+        }
+        .neon-border {
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.1);
+        }
+        .active-tab {
+            color: #6366f1;
+            transform: translateY(-8px);
+            text-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scroll-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 177.77%; /* 9:16 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .reward-popup {
+            animation: reward-popup 0.5s ease-out;
+        }
+        @keyframes reward-popup {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .coin-animation {
+            position: absolute;
+            pointer-events: none;
+            z-index: 100;
+        }
+        /* Mobile safe area */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</head>
+<body class="bg-dark text-white min-h-screen">
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 z-[100] bg-dark flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="relative w-24 h-24">
+            <div class="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <i class="fas fa-play text-primary text-2xl absolute inset-0 flex items-center justify-center"></i>
+        </div>
+        <h1 class="mt-6 text-2xl font-bold font-poppins tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">VIRAWATCH</h1>
+        <p class="mt-2 text-gray-400 text-sm animate-pulse">Initializing Ecosystem...</p>
+    </div>
+
+    <!-- Auth Flow -->
+    <div id="auth-container" class="hidden fixed inset-0 z-50 bg-dark flex flex-col items-center justify-center px-6">
+        <div class="w-full max-w-md space-y-8">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold font-poppins mb-2">Welcome</h1>
+                <p class="text-gray-400">Join the viral economy today</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form" class="glass-card p-10 space-y-8">
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email Identity</label>
+                        <input type="email" id="login-email" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:border-primary transition-all text-white" placeholder="admin@virawatch.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Security Key</label>
+                        <input type="password" id="login-password" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:border-primary transition-all text-white" placeholder="••••••••">
+                    </div>
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-primary to-secondary py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all">
+                    Access Portal
+                </button>
+                <p class="text-center text-sm text-gray-400">
+                    Don't have an account? <span onclick="toggleAuth('signup')" class="text-primary font-bold cursor-pointer">Register</span>
+                </p>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signup-form" class="hidden glass-card p-8 space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
+                        <input type="text" id="signup-name" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" placeholder="John Doe">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                        <input type="email" id="signup-email" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" placeholder="your@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                        <input type="password" id="signup-password" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" placeholder="Minimum 6 characters">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Referral Code (Optional)</label>
+                        <input type="text" id="signup-referral" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors font-mono" placeholder="REFXXXX">
+                    </div>
+                </div>
+                <button onclick="handleSignup()" class="w-full bg-gradient-to-r from-secondary to-primary py-4 rounded-xl font-bold shadow-lg shadow-secondary/25 active:scale-95 transition-transform">
+                    Create Account
+                </button>
+                <p class="text-center text-sm text-gray-400">
+                    Already have an account? <span onclick="toggleAuth('login')" class="text-secondary font-bold cursor-pointer">Login</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden when Auth is active) -->
+    <div id="app-content" class="hidden pb-24 pt-4">
+        
+        <!-- Header -->
+        <header class="px-6 flex items-center justify-between mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/40">
+                    <i class="fas fa-play text-xs text-white"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold font-poppins leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400" id="user-display-name">Loading...</h2>
+                    <p class="text-[10px] text-gray-500 tracking-widest uppercase font-bold" id="user-rank">Newcomer</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-inner">
+                <div class="w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center text-[8px] text-black font-black">C</div>
+                <span id="user-coins" class="text-yellow-400 font-bold font-mono text-sm leading-none">0</span>
+            </div>
+        </header>
+
+        <!-- Pages -->
+        <main class="px-4">
+            
+            <!-- Home Page -->
+            <section id="page-home" class="space-y-6">
+                <!-- Daily Progress -->
+                <div class="glass-card p-6 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold flex items-center gap-2 text-sm tracking-tight text-white/90">
+                            <i class="fas fa-bolt text-primary"></i> Daily Mission
+                        </h3>
+                        <span class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full" id="goal-progress-text">0/10 VIDEOS</span>
+                    </div>
+                    <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                        <div id="goal-progress-bar" class="bg-gradient-to-r from-primary via-accent to-secondary h-full w-0 transition-all duration-1000 rounded-full relative shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
+                    </div>
+                    <p class="mt-4 text-[10px] text-gray-500 font-medium">Complete missions to unlock exclusive reward multipliers.</p>
+                </div>
+
+                <!-- Action Cards Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div onclick="switchTab('earn')" class="glass-card p-5 flex flex-col items-center text-center space-y-3 active:scale-95 transition-all cursor-pointer border-t-2 border-primary/20">
+                        <div class="w-14 h-14 bg-primary/5 rounded-[22px] border border-primary/10 flex items-center justify-center text-primary mb-1 shadow-lg shadow-primary/5">
+                            <i class="fas fa-play-circle text-2xl"></i>
+                        </div>
+                        <span class="text-xs font-black uppercase tracking-widest text-white/80">Watch</span>
+                    </div>
+                    <div onclick="openSpinWheel()" class="glass-card p-5 flex flex-col items-center text-center space-y-3 active:scale-95 transition-all cursor-pointer border-t-2 border-secondary/20">
+                        <div class="w-14 h-14 bg-secondary/5 rounded-[22px] border border-secondary/10 flex items-center justify-center text-secondary mb-1 shadow-lg shadow-secondary/5">
+                            <i class="fas fa-spinner text-2xl"></i>
+                        </div>
+                        <span class="text-xs font-black uppercase tracking-widest text-white/80">Lucky</span>
+                    </div>
+                    <div onclick="openScratchCard()" class="glass-card p-4 flex flex-col items-center text-center space-y-2 active:scale-95 transition-transform cursor-pointer border-l-4 border-l-accent/50">
+                        <div class="w-12 h-12 bg-accent/20 rounded-2xl flex items-center justify-center text-accent mb-1">
+                            <i class="fas fa-hand-pointer text-xl"></i>
+                        </div>
+                        <span class="text-sm font-bold">Scratch Win</span>
+                        <span class="text-[10px] text-gray-400">Instant Coins</span>
+                    </div>
+                    <div onclick="switchTab('community')" class="glass-card p-4 flex flex-col items-center text-center space-y-2 active:scale-95 transition-transform cursor-pointer border-l-4 border-l-green-500/50">
+                        <div class="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-500 mb-1">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <span class="text-sm font-bold">Refer Friends</span>
+                        <span class="text-[10px] text-gray-400">Earn Together</span>
+                    </div>
+                </div>
+
+                <!-- Featured Section -->
+                <div>
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <i class="fas fa-fire text-accent"></i> Trending Campaigns
+                    </h3>
+                    <div id="trending-list" class="space-y-4">
+                        <!-- Videos dynamically loaded -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Earn Page (Video Watcher) -->
+            <section id="page-earn" class="hidden space-y-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xl font-bold font-poppins">Ad-Free Viewing</h2>
+                    <span class="text-xs bg-accent/20 text-accent px-2 py-1 rounded border border-accent/30 animate-pulse">LIVE REWARDS</span>
+                </div>
+
+                <!-- Main Video Shell -->
+                <div id="video-shell" class="space-y-4">
+                    <div class="video-container glass-card neon-border">
+                        <div id="youtube-player"></div>
+                        <!-- Overlay for Anti-Cheat & Stats -->
+                        <div id="player-overlay" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 bg-gradient-to-b from-black/60 via-transparent to-black/60">
+                            <div class="flex justify-between">
+                                <div id="watch-timer" class="bg-black/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono border border-white/10 hidden">
+                                    Reward in: <span id="timer-seconds">60</span>s
+                                </div>
+                                <div class="bg-primary/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-white">
+                                    Earn <span id="current-reward-amount">50</span> Coins
+                                </div>
+                            </div>
+                            <div id="video-info-overlay" class="text-sm font-bold">
+                                Select a video to start earning
+                            </div>
+                        </div>
+                        <!-- Play Button Overlay (Visible before start) -->
+                        <div id="video-start-overlay" class="absolute inset-0 z-20 flex items-center justify-center bg-black/80 transition-opacity">
+                            <button onclick="startWatching()" class="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-full border border-white/30 flex items-center justify-center active:scale-90 transition-transform">
+                                <i class="fas fa-play text-2xl ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Watch Progress Information -->
+                    <div class="glass-card p-4 flex items-center justify-between border-b-2 border-primary/30">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-clock text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400">WATCHING PROGRESS</p>
+                                <p id="session-status" class="text-xs font-bold">Idle State</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400">EST. EARNINGS</p>
+                            <p class="text-sm font-bold text-yellow-500 font-mono">+<span id="session-coins">0</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Browse More Videos -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 mb-4 tracking-widest uppercase">Available Campaigns</h3>
+                    <div id="video-feed" class="space-y-4">
+                        <!-- Video items -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rewards Page -->
+            <section id="page-rewards" class="hidden space-y-6">
+                <div class="glass-card p-6 bg-gradient-to-br from-primary/20 to-secondary/20 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-2 opacity-10">
+                        <i class="fas fa-wallet text-8xl -rotate-12"></i>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-1 uppercase tracking-tighter">Maintainable Balance</p>
+                    <div class="flex items-baseline gap-2 mb-6">
+                        <h2 id="wallet-coins" class="text-5xl font-bold font-mono">0</h2>
+                        <span class="text-yellow-500 font-bold">COINS</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="openWithdrawModal()" class="flex-1 bg-white text-dark py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                            <i class="fas fa-paper-plane"></i> Withdraw
+                        </button>
+                        <button onclick="switchTab('home')" class="flex-1 bg-slate-800/80 border border-slate-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                            <i class="fas fa-plus-circle"></i> Earn More
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Conversion rate -->
+                <div class="text-center py-2">
+                    <p class="text-[10px] text-gray-500 italic">Current Conversion: 1000 Coins = ₹10.00</p>
+                </div>
+
+                <!-- Withdrawal History -->
+                <div>
+                    <h3 class="font-bold mb-4">Transaction History</h3>
+                    <div id="withdraw-history" class="space-y-3">
+                        <!-- History items -->
+                        <div class="text-center py-10 text-gray-600">
+                            <i class="fas fa-history text-3xl mb-2"></i>
+                            <p class="text-xs">No transactions yet</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Community / Referral Page -->
+            <section id="page-community" class="hidden space-y-6">
+                <div class="glass-card p-6 text-center space-y-4">
+                    <div class="w-20 h-20 bg-gradient-to-tr from-green-400 to-primary mx-auto rounded-full flex items-center justify-center shadow-lg shadow-green-500/20 mb-2">
+                        <i class="fas fa-user-plus text-3xl text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold font-poppins">Invite & Earn</h2>
+                        <p class="text-sm text-gray-400">Get 100 Coins for every friend who joins & watches 3 videos!</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 p-3 rounded-xl">
+                        <span id="my-referral-code" class="flex-1 font-mono font-bold tracking-widest text-primary">LOADING...</span>
+                        <button onclick="copyReferralCode()" class="bg-primary/20 text-primary p-2 px-4 rounded-lg active:scale-90 transition-transform">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="shareReferral()" class="w-full bg-green-600 hover:bg-green-700 py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-green-600/30 active:scale-95 transition-transform">
+                        <i class="fab fa-whatsapp text-xl"></i> Share on WhatsApp
+                    </button>
+                </div>
+
+                <!-- Social Stats -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-primary" id="total-referrals">0</p>
+                        <p class="text-[10px] text-gray-500 uppercase">Invites</p>
+                    </div>
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-green-500" id="referral-earnings">0</p>
+                        <p class="text-[10px] text-gray-500 uppercase">Total Bonus</p>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div>
+                    <h3 class="font-bold flex items-center gap-2 mb-4">
+                        <i class="fas fa-crown text-yellow-500"></i> Top Earners
+                    </h3>
+                    <div id="leaderboard-list" class="space-y-2">
+                        <!-- Leaderboard items -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="page-profile" class="hidden space-y-6">
+                <!-- User Profile Header -->
+                <div class="glass-card p-6 flex flex-col items-center text-center">
+                    <div class="relative mb-4 group">
+                        <div class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary via-secondary to-accent animate-spin-slow">
+                            <div class="w-full h-full bg-slate-950 rounded-full flex items-center justify-center overflow-hidden">
+                                <img id="profile-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                        <div id="vip-status-badge" class="absolute -bottom-1 -right-1 bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-0.5 rounded-full text-[8px] font-black italic border-2 border-slate-950 shadow-lg hidden">VIP</div>
+                    </div>
+                    <h2 id="profile-name" class="text-xl font-bold">Loading User...</h2>
+                    <p id="profile-id" class="text-xs text-gray-500 font-mono">UID: -----</p>
+                    
+                    <div class="mt-6 flex w-full gap-4">
+                        <div class="flex-1">
+                            <p class="text-[10px] text-gray-500 uppercase">Current XP</p>
+                            <p id="profile-xp" class="text-sm font-bold">Level 1</p>
+                        </div>
+                        <div class="w-[1px] bg-slate-800 self-stretch"></div>
+                        <div class="flex-1">
+                            <p class="text-[10px] text-gray-500 uppercase">Joined</p>
+                            <p id="profile-date" class="text-sm font-bold">---</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Menu -->
+                <div class="glass-card overflow-hidden">
+                    <div onclick="openVIPUpgrade()" class="flex items-center justify-between p-4 border-b border-white/5 bg-gradient-to-r from-yellow-500/10 to-transparent cursor-pointer active:brightness-150">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-medal text-yellow-500 w-5"></i>
+                            <span class="text-sm font-medium">Upgrade to VIP</span>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    </div>
+                    <div onclick="switchTab('rewards')" class="flex items-center justify-between p-4 border-b border-white/5 cursor-pointer active:brightness-150">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-wallet text-secondary w-5"></i>
+                            <span class="text-sm font-medium">My Wallet</span>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    </div>
+                    <div onclick="openSocialTasks()" class="flex items-center justify-between p-4 border-b border-white/5 cursor-pointer active:brightness-150">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-share-nodes text-green-500 w-5"></i>
+                            <span class="text-sm font-medium">Social Tasks</span>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    </div>
+                    <div onclick="window.location.href='#'" class="flex items-center justify-between p-4 border-b border-white/5 cursor-pointer active:brightness-150">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-circle-question text-primary w-5"></i>
+                            <span class="text-sm font-medium">Support Center</span>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    </div>
+                    <div onclick="handleLogout()" class="flex items-center justify-between p-4 bg-accent/5 cursor-pointer text-accent active:brightness-150">
+                        <div class="flex items-center gap-4">
+                            <i class="fas fa-sign-out-alt w-5"></i>
+                            <span class="text-sm font-bold">Logout System</span>
+                        </div>
+                        <i class="fas fa-power-off text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Footer Info -->
+                <div class="text-center py-4">
+                    <p class="text-[10px] text-gray-600">ViraWatch Official App v1.0.4 - Early Access</p>
+                    <p class="text-[10px] text-gray-600 mt-1">Managed via Firebase Native Android Bridge</p>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-6 left-6 right-6 h-20 glass-card neon-border flex items-center justify-around px-2 z-40">
+            <button onclick="switchTab('home')" id="tab-home" class="flex flex-col items-center gap-1 transition-all duration-300 active-tab">
+                <i class="fas fa-house text-xl"></i>
+                <span class="text-[8px] font-bold uppercase tracking-widest">Home</span>
+            </button>
+            <button onclick="switchTab('earn')" id="tab-earn" class="flex flex-col items-center gap-1 transition-all duration-300 text-gray-500">
+                <i class="fas fa-bolt-lightning text-xl"></i>
+                <span class="text-[8px] font-bold uppercase tracking-widest">Earn</span>
+            </button>
+            <button onclick="switchTab('rewards')" id="tab-rewards" class="flex flex-col items-center gap-1 transition-all duration-300 text-gray-500">
+                <i class="fas fa-circle-dollar-to-slot text-xl"></i>
+                <span class="text-[8px] font-bold uppercase tracking-widest">Rewards</span>
+            </button>
+            <button onclick="switchTab('community')" id="tab-community" class="flex flex-col items-center gap-1 transition-all duration-300 text-gray-500">
+                <i class="fas fa-users-viewfinder text-xl"></i>
+                <span class="text-[8px] font-bold uppercase tracking-widest">Viral</span>
+            </button>
+            <button onclick="switchTab('profile')" id="tab-profile" class="flex flex-col items-center gap-1 transition-all duration-300 text-gray-500">
+                <i class="fas fa-user-astronaut text-xl"></i>
+                <span class="text-[8px] font-bold uppercase tracking-widest">App</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modal Overlays -->
+    <div id="modal-container" class="hidden fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+        
+        <!-- Withdraw Modal -->
+        <div id="withdraw-modal" class="hidden glass-card w-full max-w-sm p-6 space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Request Withdrawal</h2>
+                <i onclick="closeModal()" class="fas fa-times cursor-pointer text-gray-500"></i>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase mb-1">Select Gateway</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="selectGateway('upi')" class="gateway-option border-2 border-slate-700 bg-slate-800 p-3 rounded-xl flex flex-col items-center gap-1 cursor-pointer transition-all">
+                            <i class="fas fa-mobile-screen text-primary"></i>
+                            <span class="text-xs font-bold">UPI / GPay</span>
+                        </div>
+                        <div onclick="selectGateway('paytm')" class="gateway-option border-2 border-primary bg-primary/10 p-3 rounded-xl flex flex-col items-center gap-1 cursor-pointer transition-all">
+                            <i class="fas fa-qrcode text-secondary"></i>
+                            <span class="text-xs font-bold">Paytm Wallet</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase mb-1">Enter Details (Number/ID)</label>
+                    <input type="text" id="withdraw-details" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none" placeholder="8888888888@paytm">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 uppercase mb-1">Amount (Coins)</label>
+                    <input type="number" id="withdraw-amount" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none" placeholder="Min. 5000">
+                </div>
+            </div>
+            <button onclick="handleWithdrawSubmit()" class="w-full bg-gradient-to-r from-primary to-secondary py-4 rounded-xl font-bold active:scale-95 transition-transform">
+                Process Request
+            </button>
+            <p class="text-[10px] text-center text-gray-600 italic">Withdrawals take 24-48 hours for verification.</p>
+        </div>
+
+        <!-- Spin Wheel Modal (Simplified) -->
+        <div id="spin-modal" class="hidden glass-card w-full max-w-sm p-8 text-center space-y-6">
+            <h2 class="text-2xl font-bold text-yellow-500">Lucky Spin Wheel</h2>
+            <div class="relative w-48 h-48 mx-auto">
+                <div id="wheel" class="w-full h-full border-8 border-slate-800 rounded-full relative transition-transform duration-[3s] ease-out flex items-center justify-center">
+                    <div class="absolute inset-0 bg-[conic-gradient(from_0deg,#8b5cf6_0deg_60deg,#3b82f6_60deg_120deg,#ef4444_120deg_180deg,#8b5cf6_180deg_240deg,#3b82f6_240deg_300deg,#ef4444_300deg_360deg)] rounded-full rotate-[30deg]"></div>
+                    <div class="absolute w-full h-full flex items-center justify-center pointer-events-none">
+                        <span class="absolute rotate-0 translate-y-[-60px] font-bold text-sm">10</span>
+                        <span class="absolute rotate-60 translate-y-[-60px] font-bold text-sm">50</span>
+                        <span class="absolute rotate-120 translate-y-[-60px] font-bold text-sm">5</span>
+                        <span class="absolute rotate-180 translate-y-[-60px] font-bold text-sm">100</span>
+                        <span class="absolute rotate-240 translate-y-[-60px] font-bold text-sm">0</span>
+                        <span class="absolute rotate-300 translate-y-[-60px] font-bold text-sm">20</span>
+                    </div>
+                </div>
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 w-4 h-8 bg-white border-2 border-slate-900 rounded-b-xl z-10"></div>
+            </div>
+            <button id="spin-btn" onclick="handleSpin()" class="w-full bg-yellow-500 text-dark py-4 rounded-xl font-bold shadow-lg shadow-yellow-500/30 active:scale-95 transition-transform disabled:opacity-50">
+                SPIN (Cost: 50)
+            </button>
+            <p id="spin-message" class="text-xs text-gray-400">Feeling lucky today?</p>
+            <i onclick="closeModal()" class="fas fa-times absolute top-4 right-4 cursor-pointer"></i>
+        </div>
+        
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-[100] translate-y-[-100px] transition-transform duration-300 flex items-center gap-3 bg-white text-dark px-6 py-3 rounded-full shadow-2xl font-bold text-sm border-2 border-primary">
+        <i id="toast-icon" class="fas fa-check-circle text-primary"></i>
+        <span id="toast-message">Task Completed!</span>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <!-- App Logic -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSgInnq7TAHouOLDm_OWLV5eiCYdDOViw",
+            authDomain: "earning-f0702.firebaseapp.com",
+            databaseURL: "https://earning-f0702-default-rtdb.firebaseio.com",
+            projectId: "earning-f0702",
+            storageBucket: "earning-f0702.firebasestorage.app",
+            messagingSenderId: "237104042249",
+            appId: "1:237104042249:web:7dd97c33d31b4a9e8b83d8",
+            measurementId: "G-Y9201J7Q15"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        let userData = null;
+        let activeTab = 'home';
+        let ytPlayer = null;
+        let watchTimerInterval = null;
+        let secondsLeft = 60;
+        let currentVideo = null;
+        let videosList = [];
+        let isWatching = false;
+
+        // Initialize App
+        window.onload = () => {
+            // Check auth state
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    loadUserData(user.uid);
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('app-content').classList.remove('hidden');
+                } else {
+                    document.getElementById('auth-container').classList.remove('hidden');
+                    document.getElementById('app-content').classList.add('hidden');
+                    document.getElementById('loading-screen').classList.add('opacity-0');
+                    setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+                }
+            });
+
+            // Handle referral from URL
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Safety check: force hide loading screen after 8 seconds
+            setTimeout(() => {
+                const loader = document.getElementById('loading-screen');
+                if (loader && !loader.classList.contains('hidden')) {
+                    loader.classList.add('opacity-0');
+                    setTimeout(() => loader.classList.add('hidden'), 500);
+                }
+            }, 8000);
+
+            const ref = urlParams.get('ref');
+            if (ref) {
+                localStorage.setItem('pending_referral', ref);
+                document.getElementById('signup-referral').value = ref;
+            }
+        };
+
+        // UI Management
+        function toggleAuth(type) {
+            document.getElementById('login-form').classList.toggle('hidden', type === 'signup');
+            document.getElementById('signup-form').classList.toggle('hidden', type === 'login');
+        }
+
+        function switchTab(tab) {
+            // Hide all pages
+            ['home', 'earn', 'rewards', 'community', 'profile'].forEach(id => {
+                document.getElementById(`page-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).classList.remove('active-tab');
+                document.getElementById(`tab-${id}`).classList.add('text-gray-500');
+            });
+
+            // Show active page
+            document.getElementById(`page-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('active-tab');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
+            activeTab = tab;
+
+            if (tab === 'earn') loadVideos();
+            if (tab === 'community') loadLeaderboard();
+            if (tab === 'rewards') loadWithdrawalHistory();
+            
+            // Stop video if switching away from earn
+            if (tab !== 'earn' && ytPlayer) {
+                stopWatching();
+            }
+        }
+
+        // Authentication Logic
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            if (!email || !pass) return showToast('Please fill all fields', 'error');
+
+            setLoading(true);
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+                showToast('Login Successful!', 'success');
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleSignup() {
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const pass = document.getElementById('signup-password').value;
+            const refCodeInput = document.getElementById('signup-referral').value;
+
+            if (!name || !email || pass.length < 6) return showToast('Check your info (Min. 6 pass chars)', 'error');
+
+            setLoading(true);
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                const uid = cred.user.uid;
+                const myRefCode = 'REF' + Math.random().toString(36).substr(2, 6).toUpperCase();
+
+                // Check for referral bonus
+                let referrerUid = null;
+                if (refCodeInput) {
+                    const snap = await db.ref('referralCodes').child(refCodeInput).once('value');
+                    if (snap.exists()) referrerUid = snap.val();
+                }
+
+                const initialData = {
+                    uid: uid,
+                    name: name,
+                    email: email,
+                    coins: 50, // Welcome bonus
+                    referralCode: myRefCode,
+                    referredBy: referrerUid,
+                    level: 1,
+                    xp: 0,
+                    rank: 'Newcomer',
+                    totalEarned: 50,
+                    dailyVideos: 0,
+                    lastWatchDate: '',
+                    joinedAt: new Date().toISOString(),
+                    isVIP: false
+                };
+
+                await db.ref('users').child(uid).set(initialData);
+                await db.ref('referralCodes').child(myRefCode).set(uid);
+
+                // Update referrer stats
+                if (referrerUid) {
+                    await db.ref('users').child(referrerUid).child('coins').transaction(c => (c || 0) + 20);
+                    await db.ref('users').child(referrerUid).child('totalEarned').transaction(c => (c || 0) + 20);
+                }
+
+                showToast('Account Created! +50 Bonus', 'success');
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleLogout() {
+            if(confirm("Are you sure you want to logout?")) {
+                await auth.signOut();
+                location.reload();
+            }
+        }
+
+        // Data Loading
+        function loadUserData(uid) {
+            db.ref('users').child(uid).on('value', snap => {
+                userData = snap.val();
+                
+                // Hide loading screen regardless of data existence
+                document.getElementById('loading-screen').classList.add('opacity-0');
+                setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+
+                if (!userData) {
+                    console.log("No user data found for UID:", uid);
+                    return;
+                }
+
+                // Sync UI
+                document.getElementById('user-display-name').textContent = userData.name;
+                document.getElementById('user-coins').textContent = userData.coins.toLocaleString();
+                document.getElementById('user-rank').textContent = userData.rank;
+                document.getElementById('wallet-coins').textContent = userData.coins.toLocaleString();
+                document.getElementById('my-referral-code').textContent = userData.referralCode;
+                document.getElementById('profile-name').textContent = userData.name;
+                document.getElementById('profile-id').textContent = `UID: ${userData.uid.substr(0, 10)}...`;
+                document.getElementById('profile-xp').textContent = `Level ${userData.level}`;
+                document.getElementById('profile-date').textContent = new Date(userData.joinedAt).toLocaleDateString();
+                document.getElementById('profile-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.uid}`;
+                
+                // Progress Bar
+                const progress = (userData.dailyVideos / 10) * 100;
+                document.getElementById('goal-progress-bar').style.width = `${Math.min(progress, 100)}%`;
+                document.getElementById('goal-progress-text').textContent = `${userData.dailyVideos || 0}/10 Videos`;
+
+                if(userData.isVIP) {
+                    document.getElementById('vip-status-badge').classList.remove('hidden');
+                }
+            });
+        }
+
+        async function loadVideos() {
+            const snap = await db.ref('videos').limitToLast(20).once('value');
+            const data = snap.val();
+            const container = document.getElementById('video-feed');
+            const trending = document.getElementById('trending-list');
+            
+            container.innerHTML = '';
+            trending.innerHTML = '';
+            videosList = [];
+
+            if (!data) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10">No active campaigns</p>';
+                return;
+            }
+
+            Object.keys(data).forEach(key => {
+                const video = data[key];
+                video.id = key;
+                videosList.push(video);
+
+                const html = `
+                    <div onclick="selectVideo('${key}')" class="glass-card p-3 flex gap-4 active:scale-95 transition-transform cursor-pointer overflow-hidden relative">
+                        <div class="w-32 h-20 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0 relative">
+                            <img src="https://img.youtube.com/vi/${video.ytId}/mqdefault.jpg" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <i class="fas fa-play text-white/50 text-xs shadow-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col justify-center min-w-0">
+                            <h4 class="text-xs font-bold truncate">${video.title}</h4>
+                            <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-clock mr-1"></i> ${video.duration}s Required</p>
+                            <div class="mt-2 flex items-center gap-1 group">
+                                <span class="bg-primary/20 text-primary text-[9px] px-2 py-0.5 rounded-full font-bold">+${video.reward} Coins</span>
+                                <span class="bg-secondary/10 text-secondary text-[9px] px-2 py-0.5 rounded-full font-bold">XP+${Math.floor(video.reward/10)}</span>
+                            </div>
+                        </div>
+                        ${video.priority === 'high' ? '<div class="absolute -top-1 -right-1 bg-accent text-[8px] px-2 py-1 rounded-bl-lg font-bold">HOT</div>' : ''}
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                
+                // Add to trending
+                if(video.priority === 'high') {
+                    trending.insertAdjacentHTML('beforeend', html);
+                }
+            });
+        }
+
+        // Youtube Watcher Logic
+        function selectVideo(id) {
+            const video = videosList.find(v => v.id === id);
+            if (!video) return;
+            
+            currentVideo = video;
+            document.getElementById('video-info-overlay').textContent = video.title;
+            document.getElementById('current-reward-amount').textContent = video.reward;
+            document.getElementById('timer-seconds').textContent = video.duration;
+            document.getElementById('video-start-overlay').classList.remove('hidden');
+            
+            // Auto scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Initialize Player
+            if (!ytPlayer) {
+                onYouTubeIframeAPIReady();
+            } else {
+                ytPlayer.loadVideoById(video.ytId);
+                ytPlayer.pauseVideo();
+            }
+        }
+
+        function onYouTubeIframeAPIReady() {
+            if (!currentVideo) return;
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: currentVideo.ytId,
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 1,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'showinfo': 0,
+                    'fs': 0,
+                    'disablekb': 1
+                },
+                events: {
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerStateChange(event) {
+            // event.data = 1 (playing), 2 (paused), 0 (ended)
+            if (event.data === 1) {
+                startTimer();
+                isWatching = true;
+                document.getElementById('session-status').textContent = 'Tracking View...';
+                document.getElementById('session-status').classList.add('text-green-500');
+            } else {
+                pauseTimer();
+                isWatching = false;
+                document.getElementById('session-status').textContent = 'Paused (Halted)';
+                document.getElementById('session-status').classList.remove('text-green-500');
+            }
+        }
+
+        function startWatching() {
+            if (!currentVideo) return showToast('Select a video first', 'error');
+            document.getElementById('video-start-overlay').classList.add('hidden');
+            document.getElementById('watch-timer').classList.remove('hidden');
+            ytPlayer.playVideo();
+            secondsLeft = currentVideo.duration;
+            document.getElementById('timer-seconds').textContent = secondsLeft;
+        }
+
+        function stopWatching() {
+            if (ytPlayer) ytPlayer.pauseVideo();
+            pauseTimer();
+            isWatching = false;
+            document.getElementById('watch-timer').classList.add('hidden');
+            document.getElementById('video-start-overlay').classList.remove('hidden');
+        }
+
+        function startTimer() {
+            if (watchTimerInterval) return;
+            watchTimerInterval = setInterval(() => {
+                if (secondsLeft > 0) {
+                    secondsLeft--;
+                    document.getElementById('timer-seconds').textContent = secondsLeft;
+                    document.getElementById('session-coins').textContent = Math.floor((currentVideo.duration - secondsLeft) * (currentVideo.reward / currentVideo.duration));
+                } else {
+                    completeWatch();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(watchTimerInterval);
+            watchTimerInterval = null;
+        }
+
+        async function completeWatch() {
+            pauseTimer();
+            ytPlayer.pauseVideo();
+            document.getElementById('watch-timer').classList.add('hidden');
+            
+            // Logic to prevent multiple rewards for same session
+            const reward = currentVideo.reward;
+            
+            // Update User
+            await db.ref('users').child(currentUser.uid).transaction(user => {
+                if (user) {
+                    user.coins += reward;
+                    user.totalEarned += reward;
+                    user.xp += Math.floor(reward/10);
+                    const oldDaily = user.dailyVideos || 0;
+                    user.dailyVideos = oldDaily + 1;
+                    user.totalVideosWatched = (user.totalVideosWatched || 0) + 1;
+                    
+                    // Level logic
+                    if (user.xp >= user.level * 1000) {
+                        user.level += 1;
+                    }
+
+                    // Milestone for referrer
+                    if (user.totalVideosWatched === 3 && user.referredBy) {
+                        db.ref('users').child(user.referredBy).child('coins').transaction(c => (c || 0) + 100);
+                        db.ref('users').child(user.referredBy).child('totalEarned').transaction(c => (c || 0) + 100);
+                    }
+                }
+                return user;
+            });
+
+            // Log activity
+            await db.ref('watchHistory').child(currentUser.uid).push({
+                videoId: currentVideo.id,
+                ytId: currentVideo.ytId,
+                reward: reward,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            showToast(`Earned +${reward} Coins!`, 'reward');
+            createCoinRain();
+            
+            // Reset
+            currentVideo = null;
+            document.getElementById('session-coins').textContent = '0';
+            document.getElementById('video-info-overlay').textContent = 'Task Accomplished!';
+            document.getElementById('video-start-overlay').classList.remove('hidden');
+        }
+
+        // Anti-Cheat (Simple visibility check)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isWatching) {
+                ytPlayer.pauseVideo();
+                showToast('Stay on screen to earn!', 'error');
+            }
+        });
+
+        // Withdrawal Logic
+        let selectedGateway = 'paytm';
+        function openWithdrawModal() {
+            if (!userData) return showToast('Loading data...', 'info');
+            if (userData.coins < 5000) return showToast('Min. 5000 Coins required', 'error');
+            document.getElementById('withdraw-modal').classList.remove('hidden');
+            document.getElementById('modal-container').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-container').classList.add('hidden');
+            document.getElementById('withdraw-modal').classList.add('hidden');
+            document.getElementById('spin-modal').classList.add('hidden');
+        }
+
+        function selectGateway(type) {
+            selectedGateway = type;
+            document.querySelectorAll('.gateway-option').forEach(el => el.classList.remove('border-primary', 'bg-primary/10'));
+            const target = type === 'upi' ? document.querySelector('[onclick="selectGateway(\'upi\')"]') : document.querySelector('[onclick="selectGateway(\'paytm\')"]');
+            target.classList.add('border-primary', 'bg-primary/10');
+        }
+
+        async function handleWithdrawSubmit() {
+            if (!userData) return;
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const details = document.getElementById('withdraw-details').value;
+
+            if (!amount || amount < 5000) return showToast('Minimum 5,000 required', 'error');
+            if (amount > userData.coins) return showToast('Insufficient Balance', 'error');
+            if (!details) return showToast('Enter Payment Details', 'error');
+
+            setLoading(true);
+            try {
+                const request = {
+                    uid: currentUser.uid,
+                    name: userData.name,
+                    amount: amount,
+                    details: details,
+                    gateway: selectedGateway,
+                    status: 'pending',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+
+                await db.ref('withdrawals').push(request);
+                await db.ref('users').child(currentUser.uid).child('coins').transaction(c => c - amount);
+
+                showToast('Request Sent Successfully', 'success');
+                closeModal();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function loadWithdrawalHistory() {
+            const snap = await db.ref('withdrawals').orderByChild('uid').equalTo(currentUser.uid).limitToLast(10).once('value');
+            const data = snap.val();
+            const container = document.getElementById('withdraw-history');
+            container.innerHTML = '';
+
+            if(!data) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-600"><i class="fas fa-history text-3xl mb-2"></i><p class="text-xs">No transactions yet</p></div>';
+                return;
+            }
+
+            Object.values(data).reverse().forEach(item => {
+                const statusColor = item.status === 'pending' ? 'text-yellow-500' : (item.status === 'approved' ? 'text-green-500' : 'text-accent');
+                const html = `
+                    <div class="glass-card p-4 flex justify-between items-center bg-slate-900/50">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider">${item.gateway}</p>
+                            <p class="text-[10px] text-gray-500">${new Date(item.timestamp).toLocaleDateString()}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-mono font-bold">-${item.amount}</p>
+                            <p class="text-[9px] font-bold ${statusColor} uppercase">${item.status}</p>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // Leaderboard
+        async function loadLeaderboard() {
+            const snap = await db.ref('users').orderByChild('totalEarned').limitToLast(10).once('value');
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '';
+            
+            let users = [];
+            snap.forEach(child => { users.push(child.val()); });
+            users.reverse();
+
+            users.forEach((u, i) => {
+                const html = `
+                    <div class="flex items-center justify-between p-3 glass-card bg-slate-900/40">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-gray-500 w-4">${i+1}.</span>
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-8 h-8 rounded-full">
+                            <div>
+                                <p class="text-xs font-bold">${u.name} ${u.isVIP ? '⭐' : ''}</p>
+                                <p class="text-[9px] text-gray-500">Lv. ${u.level}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs font-mono font-bold text-yellow-500">${u.totalEarned}</p>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // Spin Wheel
+        function openSpinWheel() {
+            document.getElementById('spin-modal').classList.remove('hidden');
+            document.getElementById('modal-container').classList.remove('hidden');
+        }
+
+        let isSpinning = false;
+        async function handleSpin() {
+            if (isSpinning || !userData) return;
+            if (userData.coins < 50) return showToast('Min. 50 Coins required', 'error');
+
+            isSpinning = true;
+            document.getElementById('spin-btn').disabled = true;
+            
+            // Deduct cost
+            await db.ref('users').child(currentUser.uid).child('coins').transaction(c => c - 50);
+
+            const degrees = [0, 60, 120, 180, 240, 300];
+            const rewards = [10, 50, 5, 100, 0, 20];
+            
+            const randIdx = Math.floor(Math.random() * degrees.length);
+            const extraSpins = 5; // 5 full rotations
+            const finalRotation = (extraSpins * 360) + degrees[randIdx];
+
+            const wheel = document.getElementById('wheel');
+            wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+            setTimeout(async () => {
+                const win = rewards[randIdx];
+                if (win > 0) {
+                    await db.ref('users').child(currentUser.uid).child('coins').transaction(c => (c || 0) + win);
+                    await db.ref('users').child(currentUser.uid).child('totalEarned').transaction(c => (c || 0) + win);
+                    showToast(`Won ${win} Coins!`, 'reward');
+                    createCoinRain();
+                } else {
+                    showToast('Better luck next time!', 'info');
+                }
+                
+                isSpinning = false;
+                document.getElementById('spin-btn').disabled = false;
+                wheel.style.transition = 'none';
+                wheel.style.transform = `rotate(${degrees[randIdx]}deg)`;
+                setTimeout(() => wheel.style.transition = 'transform 3s ease-out', 10);
+            }, 3000);
+        }
+
+        // Utils
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-message').textContent = msg;
+            
+            icon.className = 'fas ' + (type === 'error' ? 'fa-exclamation-circle text-accent' : (type === 'reward' ? 'fa-gem text-yellow-500' : 'fa-check-circle text-primary'));
+            toast.style.transform = 'translate(-50%, 100px)';
+            
+            setTimeout(() => {
+                toast.style.transform = 'translate(-50%, -100px)';
+            }, 3000);
+        }
+
+        function setLoading(val) {
+            // Optional spinner
+        }
+
+        function copyReferralCode() {
+            const code = document.getElementById('my-referral-code').textContent;
+            navigator.clipboard.writeText(code);
+            showToast('Code Copied!', 'success');
+        }
+
+        function shareReferral() {
+            const code = document.getElementById('my-referral-code').textContent;
+            const link = window.location.origin + '/user.html?ref=' + code;
+            const text = encodeURIComponent(`Hey! Join ViraWatch & Earn  and Real Cash 💸 daily by watching YouTube videos! 📺\n\nUse my code: ${code}\n\nDownload Link: ${link}`);
+            window.open(`https://wa.me/?text=${text}`);
+        }
+
+        function createCoinRain() {
+            for (let i = 0; i < 15; i++) {
+                const coin = document.createElement('div');
+                coin.className = 'coin-animation';
+                coin.innerHTML = '🪙';
+                coin.style.left = Math.random() * 100 + 'vw';
+                coin.style.top = '-50px';
+                coin.style.fontSize = (Math.random() * 20 + 20) + 'px';
+                document.body.appendChild(coin);
+
+                const duration = Math.random() * 2 + 1;
+                coin.style.transition = `all ${duration}s linear`;
+                
+                setTimeout(() => {
+                    coin.style.transform = `translate(${Math.random() * 200 - 100}px, 110vh) rotate(${Math.random() * 360}deg)`;
+                }, 10);
+
+                setTimeout(() => coin.remove(), duration * 1000);
+            }
+        }
+    </script>
+    <!-- Youtube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

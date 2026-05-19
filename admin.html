@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViraWatch - Admin Nucleus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // indigo-500
+                        secondary: '#8b5cf6', // violet-500
+                        dark: '#050508',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #050508; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .sidebar-active { background: linear-gradient(to right, rgba(99, 102, 241, 0.1), transparent); border-left: 2px solid #6366f1; color: #6366f1; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #050508; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Auth Protected Layer -->
+    <div id="admin-auth" class="fixed inset-0 z-[100] bg-dark flex flex-col items-center justify-center p-6">
+        <div class="w-full max-w-md glass p-8 rounded-3xl space-y-6">
+            <div class="text-center">
+                <div class="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/30">
+                    <i class="fas fa-lock text-3xl text-primary"></i>
+                </div>
+                <h1 class="text-2xl font-bold font-poppins text-white">Nucleus Control</h1>
+                <p class="text-gray-500 text-sm">Elite Authorization Required</p>
+            </div>
+            <div class="space-y-4">
+                <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="admin@virawatch.com">
+                <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key">
+                <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Initialize System</button>
+            </div>
+            <p class="text-[10px] text-center text-gray-700">AUTHORIZED ACCESS ONLY. ALL IP LOGS RECORDED.</p>
+        </div>
+    </div>
+
+    <!-- Main Admin Layout -->
+    <div id="admin-panel" class="hidden flex-1 flex flex-col md:flex-row h-screen">
+        
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 glass border-r border-white/5 flex flex-col">
+            <div class="p-6">
+                <h1 class="text-xl font-bold font-poppins bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">ViraWatch Nucleus</h1>
+                <p class="text-[10px] text-gray-600 tracking-widest mt-1 font-bold">ECOSYSTEM v1.0.4</p>
+            </div>
+            
+            <nav class="flex-1 space-y-1">
+                <button onclick="showSection('dashboard')" id="btn-dashboard" class="sidebar-active w-full flex items-center gap-4 px-6 py-4 transition-all">
+                    <i class="fas fa-grid-2 w-5"></i>
+                    <span class="text-sm font-bold">Dashboard</span>
+                </button>
+                <button onclick="showSection('videos')" id="btn-videos" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                    <i class="fas fa-video w-5"></i>
+                    <span class="text-sm font-semibold">Campaigns</span>
+                </button>
+                <button onclick="showSection('users')" id="btn-users" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                    <i class="fas fa-users w-5"></i>
+                    <span class="text-sm font-semibold">User base</span>
+                </button>
+                <button onclick="showSection('withdrawals')" id="btn-withdrawals" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                    <i class="fas fa-wallet w-5"></i>
+                    <span class="text-sm font-semibold">Withdrawals</span>
+                </button>
+                <button onclick="showSection('notifications')" id="btn-notifications" class="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-white transition-all">
+                    <i class="fas fa-bell w-5"></i>
+                    <span class="text-sm font-semibold">Broadcast</span>
+                </button>
+            </nav>
+
+            <div class="p-4">
+                <button onclick="location.reload()" class="w-full bg-slate-900 border border-slate-800 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-gray-500 hover:text-white">
+                    <i class="fas fa-power-off"></i> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 space-y-8">
+            
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Total Users</p>
+                        <h2 id="stat-users" class="text-3xl font-bold font-poppins">0</h2>
+                        <div class="mt-2 text-[10px] text-green-500">+12% from last week</div>
+                    </div>
+                    <div class="glass p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Active Videos</p>
+                        <h2 id="stat-videos" class="text-3xl font-bold font-poppins">0</h2>
+                        <div class="mt-2 text-[10px] text-primary">Live Campaigns</div>
+                    </div>
+                    <div class="glass p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Distributed Coins</p>
+                        <h2 id="stat-coins" class="text-3xl font-bold font-poppins">0</h2>
+                        <div class="mt-2 text-[10px] text-yellow-500">Total Economy</div>
+                    </div>
+                    <div class="glass p-6 rounded-3xl">
+                        <p class="text-gray-500 text-xs font-bold uppercase mb-2">Pending Payments</p>
+                        <h2 id="stat-withdraws" class="text-3xl font-bold font-poppins">0</h2>
+                        <div class="mt-2 text-[10px] text-blue-500">Awaiting Action</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="glass p-8 rounded-3xl space-y-6">
+                        <h3 class="text-lg font-bold">Recent Signups</h3>
+                        <div id="recent-users" class="space-y-4">
+                            <!-- JS Inject -->
+                        </div>
+                    </div>
+                    <div class="glass p-8 rounded-3xl space-y-6">
+                        <h3 class="text-lg font-bold">Latest Watch Activity</h3>
+                        <div id="recent-activity" class="space-y-4">
+                            <!-- JS Inject -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Videos Section -->
+            <section id="section-videos" class="hidden space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold font-poppins">Campaign Management</h2>
+                    <button onclick="toggleVideoForm()" class="bg-primary px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20">Add Video <i class="fas fa-plus ml-2"></i></button>
+                </div>
+
+                <!-- Add Video Form -->
+                <div id="video-form" class="hidden glass p-8 rounded-3xl space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500">Video Title</label>
+                            <input type="text" id="v-title" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none" placeholder="Trending Tech News">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500">YouTube ID</label>
+                            <input type="text" id="v-ytid" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none" placeholder="dQw4w9WgXcQ">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500">Reward (Coins)</label>
+                            <input type="number" id="v-reward" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none" placeholder="50">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-500">Watch Duration (Seconds)</label>
+                            <input type="number" id="v-duration" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 focus:outline-none" placeholder="60">
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="saveVideo()" class="flex-1 bg-green-600 py-4 rounded-xl font-bold">Save Campaign</button>
+                        <button onclick="toggleVideoForm()" class="px-8 bg-slate-800 py-4 rounded-xl font-bold">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="glass rounded-3xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 uppercase text-[10px] tracking-widest text-gray-500">
+                            <tr>
+                                <th class="p-6">Thumbnail</th>
+                                <th class="p-6">Title</th>
+                                <th class="p-6 text-center">Reward</th>
+                                <th class="p-6 text-center">Duration</th>
+                                <th class="p-6 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="video-list">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="section-users" class="hidden space-y-8">
+                <h2 class="text-2xl font-bold font-poppins">User Database</h2>
+                <div class="glass p-4 rounded-2xl flex gap-4">
+                    <input type="text" placeholder="Search by UID or Name..." class="flex-1 bg-transparent px-4 focus:outline-none">
+                    <button class="bg-white text-dark px-6 py-2 rounded-xl font-bold">Filter</button>
+                </div>
+                
+                <div class="glass rounded-3xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 text-[10px] tracking-widest text-gray-500 uppercase">
+                            <tr>
+                                <th class="p-6">User</th>
+                                <th class="p-6">Balance</th>
+                                <th class="p-6">Rank</th>
+                                <th class="p-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Withdrawals Section -->
+            <section id="section-withdrawals" class="hidden space-y-8">
+                <h2 class="text-2xl font-bold font-poppins">Awaiting Payments</h2>
+                <div class="glass rounded-3xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-white/5 uppercase text-[10px] tracking-widest text-gray-500">
+                            <tr>
+                                <th class="p-6">User</th>
+                                <th class="p-6">Gateway</th>
+                                <th class="p-6">Details</th>
+                                <th class="p-6">Amount</th>
+                                <th class="p-6 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawal-list">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSgInnq7TAHouOLDm_OWLV5eiCYdDOViw",
+            authDomain: "earning-f0702.firebaseapp.com",
+            databaseURL: "https://earning-f0702-default-rtdb.firebaseio.com",
+            projectId: "earning-f0702",
+            storageBucket: "earning-f0702.firebasestorage.app",
+            messagingSenderId: "237104042249",
+            appId: "1:237104042249:web:7dd97c33d31b4a9e8b83d8",
+            measurementId: "G-Y9201J7Q15"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        async function handleAdminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-password').value;
+            
+            if(!email || !pass) return alert('Credentials Required');
+
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, pass);
+                const uid = cred.user.uid;
+                
+                // Verify if user is admin in database
+                const snap = await db.ref('admins').child(uid).once('value');
+                if (snap.exists()) {
+                    document.getElementById('admin-auth').classList.add('hidden');
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                    initAdmin();
+                } else {
+                    await auth.signOut();
+                    alert('ACCESS DENIED: ACCOUNT NOT IN ELITE REGISTRY');
+                }
+            } catch (err) {
+                alert('SYSTEM ERROR: ' + err.message);
+            }
+        }
+
+        function initAdmin() {
+            loadStats();
+            loadRecentActivity();
+            loadVideos();
+            loadUsers();
+            loadWithdrawals();
+        }
+
+        function showSection(id) {
+            ['dashboard', 'videos', 'users', 'withdrawals', 'notifications'].forEach(s => {
+                document.getElementById(`section-${s}`).classList.add('hidden');
+                document.getElementById(`btn-${s}`).classList.remove('sidebar-active');
+            });
+            document.getElementById(`section-${id}`).classList.remove('hidden');
+            document.getElementById(`btn-${id}`).classList.add('sidebar-active');
+        }
+
+        // Stats
+        function loadStats() {
+            db.ref('users').on('value', snap => {
+                const total = snap.numChildren();
+                document.getElementById('stat-users').textContent = total;
+                
+                let coins = 0;
+                snap.forEach(child => { coins += (child.val().coins || 0); });
+                document.getElementById('stat-coins').textContent = coins.toLocaleString();
+            });
+
+            db.ref('videos').on('value', snap => {
+                document.getElementById('stat-videos').textContent = snap.numChildren();
+            });
+
+            db.ref('withdrawals').on('value', snap => {
+                let pending = 0;
+                snap.forEach(child => { if(child.val().status === 'pending') pending++; });
+                document.getElementById('stat-withdraws').textContent = pending;
+            });
+        }
+
+        function loadRecentActivity() {
+            db.ref('watchHistory').limitToLast(5).on('value', snap => {
+                const container = document.getElementById('recent-activity');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const h = child.val();
+                    Object.values(h).forEach(item => {
+                        const html = `
+                            <div class="flex items-center justify-between text-sm py-2 border-b border-white/5">
+                                <span class="text-gray-400">UID: ${item.uid ? item.uid.substr(0, 5) : 'User'}</span>
+                                <span class="bg-green-500/10 text-green-500 px-2 rounded font-mono">+${item.reward}</span>
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('afterbegin', html);
+                    });
+                });
+            });
+        }
+
+        // Videos
+        function toggleVideoForm() {
+            document.getElementById('video-form').classList.toggle('hidden');
+        }
+
+        async function saveVideo() {
+            const title = document.getElementById('v-title').value;
+            const ytId = document.getElementById('v-ytid').value;
+            const reward = parseInt(document.getElementById('v-reward').value);
+            const duration = parseInt(document.getElementById('v-duration').value);
+
+            if(!title || !ytId || !reward) return alert('Fill all fields');
+
+            await db.ref('videos').push({
+                title, ytId, reward, duration,
+                priority: 'normal',
+                active: true,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            alert('Video Added!');
+            toggleVideoForm();
+            // Clear inputs
+            ['v-title', 'v-ytid', 'v-reward', 'v-duration'].forEach(i => document.getElementById(i).value = '');
+        }
+
+        function loadVideos() {
+            db.ref('videos').on('value', snap => {
+                const container = document.getElementById('video-list');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const v = child.val();
+                    const html = `
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <td class="p-6"><img src="https://img.youtube.com/vi/${v.ytId}/default.jpg" class="w-20 rounded-lg"></td>
+                            <td class="p-6 font-semibold">${v.title}</td>
+                            <td class="p-6 text-center text-yellow-500 font-mono">${v.reward}</td>
+                            <td class="p-6 text-center">${v.duration}s</td>
+                            <td class="p-6 text-right">
+                                <button onclick="deleteVideo('${child.key}')" class="text-primary hover:bg-primary/20 p-2 rounded-lg transition-all"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            });
+        }
+
+        async function deleteVideo(id) {
+            if(confirm('Delete this video?')) {
+                await db.ref('videos').child(id).remove();
+            }
+        }
+
+        // Users
+        function loadUsers() {
+            db.ref('users').limitToLast(50).on('value', snap => {
+                const container = document.getElementById('user-list');
+                const recentContainer = document.getElementById('recent-users');
+                container.innerHTML = '';
+                recentContainer.innerHTML = '';
+
+                snap.forEach(child => {
+                    const u = child.val();
+                    const html = `
+                        <tr class="border-b border-white/5">
+                            <td class="p-6 flex items-center gap-4">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-10 h-10 rounded-full">
+                                <div>
+                                    <p class="font-bold">${u.name}</p>
+                                    <p class="text-[10px] text-gray-500">${u.email}</p>
+                                </div>
+                            </td>
+                            <td class="p-6 font-mono text-yellow-500">${(u.coins || 0).toLocaleString()}</td>
+                            <td class="p-6"><span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase">${u.rank}</span></td>
+                            <td class="p-6 text-right">
+                                <button class="bg-blue-500/20 text-blue-500 p-2 rounded-lg"><i class="fas fa-edit"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    container.insertAdjacentHTML('afterbegin', html);
+
+                    // For dashboard sidebar
+                    const recentHtml = `
+                        <div class="flex items-center gap-3">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}" class="w-8 h-8 rounded-full">
+                            <div class="flex-1">
+                                <p class="text-xs font-bold">${u.name}</p>
+                                <p class="text-[10px] text-gray-500">${u.email}</p>
+                            </div>
+                        </div>
+                    `;
+                    recentContainer.insertAdjacentHTML('afterbegin', recentHtml);
+                });
+            });
+        }
+
+        // Withdrawals
+        function loadWithdrawals() {
+            db.ref('withdrawals').on('value', snap => {
+                const container = document.getElementById('withdrawal-list');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const w = child.val();
+                    if(w.status === 'pending') {
+                        const html = `
+                            <tr class="border-b border-white/5 animate-pulse">
+                                <td class="p-6 font-bold">${w.name}</td>
+                                <td class="p-6 uppercase text-primary font-bold text-xs">${w.gateway}</td>
+                                <td class="p-6 font-mono text-xs">${w.details}</td>
+                                <td class="p-6 font-mono font-bold text-yellow-500">${w.amount}</td>
+                                <td class="p-6 text-right gap-2 flex justify-end">
+                                    <button onclick="approveWithdrawal('${child.key}')" class="bg-green-600 px-4 py-2 rounded-lg text-xs font-bold">Approve</button>
+                                    <button onclick="rejectWithdrawal('${child.key}')" class="bg-primary px-4 py-2 rounded-lg text-xs font-bold">Reject</button>
+                                </td>
+                            </tr>
+                        `;
+                        container.insertAdjacentHTML('afterbegin', html);
+                    }
+                });
+            });
+        }
+
+        async function approveWithdrawal(id) {
+            if(confirm('Pay user and complete?')) {
+                await db.ref('withdrawals').child(id).update({ status: 'approved' });
+            }
+        }
+
+        async function rejectWithdrawal(id) {
+            if(confirm('Refund coins and reject?')) {
+                const snap = await db.ref('withdrawals').child(id).once('value');
+                const w = snap.val();
+                await db.ref('users').child(w.uid).child('coins').transaction(c => c + w.amount);
+                await db.ref('withdrawals').child(id).update({ status: 'rejected' });
+            }
+        }
+
+    </script>
+</body>
+</html>
