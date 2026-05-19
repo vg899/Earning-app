@@ -529,24 +529,38 @@
         }
 
         async function saveVideo() {
-            const title = document.getElementById('v-title').value;
-            const ytId = document.getElementById('v-ytid').value;
-            const reward = parseInt(document.getElementById('v-reward').value);
-            const duration = parseInt(document.getElementById('v-duration').value);
+            const title = document.getElementById('v-title').value.trim();
+            const ytId = document.getElementById('v-ytid').value.trim();
+            const rewardInput = document.getElementById('v-reward').value;
+            const durationInput = document.getElementById('v-duration').value;
 
-            if(!title || !ytId || !reward) return alert('Fill all fields');
+            const reward = parseInt(rewardInput);
+            const duration = parseInt(durationInput) || 60; // Default 60s
 
-            await db.ref('videos').push({
-                title, ytId, reward, duration,
-                priority: 'normal',
-                active: true,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            });
+            if(!title || !ytId || isNaN(reward)) {
+                return alert('Please enter Title, YouTube ID, and a valid Reward amount.');
+            }
 
-            alert('Video Added!');
-            toggleVideoForm();
-            // Clear inputs
-            ['v-title', 'v-ytid', 'v-reward', 'v-duration'].forEach(i => document.getElementById(i).value = '');
+            try {
+                // Show a simple loading hint if needed, but for now just try to save
+                await db.ref('videos').push({
+                    title, 
+                    ytId, 
+                    reward, 
+                    duration,
+                    priority: 'normal',
+                    active: true,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                alert('Campaign Saved Successfully!');
+                toggleVideoForm();
+                // Clear inputs
+                ['v-title', 'v-ytid', 'v-reward', 'v-duration'].forEach(i => document.getElementById(i).value = '');
+            } catch (error) {
+                console.error("Save Video Error:", error);
+                alert('SYSTEM ERROR: Could not save campaign. ' + error.message);
+            }
         }
 
         function loadVideos() {
@@ -636,12 +650,14 @@
                         </td>
                         <td class="p-6 font-mono text-yellow-500">${(u.coins || 0).toLocaleString()}</td>
                         <td class="p-6">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${u.rank === 'SUPER ADMIN' ? 'bg-primary/20 text-primary' : 'bg-white/10'}">${u.rank || 'NEWBIE'}</span>
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${u.isBanned ? 'bg-red-500 text-white' : (u.rank === 'SUPER ADMIN' ? 'bg-primary/20 text-primary' : 'bg-white/10')}">${u.isBanned ? 'BANNED' : (u.rank || 'NEWBIE')}</span>
                         </td>
                         <td class="p-6 text-right">
                             <div class="flex justify-end gap-2">
-                                <button onclick="modifyCoins('${u.uid}')" class="bg-yellow-500/10 text-yellow-500 p-2 rounded-lg hover:bg-yellow-500/20"><i class="fas fa-coins"></i></button>
-                                <button onclick="deleteUser('${u.uid}')" class="bg-red-500/10 text-red-500 p-2 rounded-lg hover:bg-red-500/20"><i class="fas fa-user-minus"></i></button>
+                                <button onclick="modifyCoins('${u.uid}')" title="Modify Coins" class="bg-yellow-500/10 text-yellow-500 p-2 rounded-lg hover:bg-yellow-500/20"><i class="fas fa-coins"></i></button>
+                                <button onclick="manageRoles('${u.uid}', '${u.rank}')" title="Manage Roles" class="bg-blue-500/10 text-blue-500 p-2 rounded-lg hover:bg-blue-500/20"><i class="fas fa-user-tag"></i></button>
+                                <button onclick="toggleBan('${u.uid}', ${u.isBanned || false})" title="${u.isBanned ? 'Unban' : 'Ban'} User" class="${u.isBanned ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} p-2 rounded-lg hover:bg-opacity-20"><i class="fas ${u.isBanned ? 'fa-user-check' : 'fa-user-slash'}"></i></button>
+                                <button onclick="deleteUser('${u.uid}')" title="Delete Account" class="bg-red-500/10 text-red-500 p-2 rounded-lg hover:bg-red-500/20"><i class="fas fa-trash"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -659,8 +675,47 @@
         }
 
         async function deleteUser(uid) {
-            if (confirm('Permanently delete this user?')) {
+            if (confirm('Permanently delete this user? This action cannot be undone.')) {
                 await db.ref('users').child(uid).remove();
+            }
+        }
+
+        async function manageRoles(uid, currentRank) {
+            const role = prompt(`Promote user ${uid}?\nOptions: NEWBIE, VIP, SUPER ADMIN`, currentRank);
+            if (role) {
+                const upperRole = role.toUpperCase();
+                if (['NEWBIE', 'VIP', 'SUPER ADMIN'].includes(upperRole)) {
+                    const updates = { rank: upperRole };
+                    if (upperRole === 'VIP' || upperRole === 'SUPER ADMIN') {
+                        updates.isVIP = true;
+                    } else {
+                        updates.isVIP = false;
+                    }
+                    
+                    await db.ref('users').child(uid).update(updates);
+                    
+                    // If promoted to Admin, add to admins list
+                    if (upperRole === 'SUPER ADMIN') {
+                        await db.ref('admins').child(uid).set(true);
+                    } else {
+                        // Remove from admins if downgraded
+                        await db.ref('admins').child(uid).remove();
+                    }
+                    
+                    alert(`User updated to ${upperRole}`);
+                } else {
+                    alert('Invalid Role Specified');
+                }
+            }
+        }
+
+        async function toggleBan(uid, isCurrentlyBanned) {
+            const action = isCurrentlyBanned ? 'Unban' : 'Ban';
+            if (confirm(`Are you sure you want to ${action} this user?`)) {
+                await db.ref('users').child(uid).update({
+                    isBanned: !isCurrentlyBanned
+                });
+                alert(`User ${action}ned successfully.`);
             }
         }
 
