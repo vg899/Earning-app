@@ -266,19 +266,30 @@
                 try {
                     cred = await auth.signInWithEmailAndPassword(email, pass);
                 } catch (loginErr) {
+                    // Modern Firebase often uses 'auth/invalid-credential' instead of 'auth/user-not-found'
+                    const isUserNotFound = loginErr.code === 'auth/user-not-found' || loginErr.code === 'auth/invalid-credential';
+                    
                     // If this is the specific admin user and they don't exist yet, try to register them
-                    if (email === 'Admin1@gmail.com' && pass === 'Harshvardhan' && loginErr.code === 'auth/user-not-found') {
-                        if (confirm("Primary Admin account not found. Create it now with these credentials?")) {
-                            cred = await auth.createUserWithEmailAndPassword(email, pass);
-                            // Set essential user data for the new admin
-                            await db.ref('users').child(cred.user.uid).set({
-                                name: 'Harshvardhan',
-                                email: email,
-                                coins: 0,
-                                rank: 'SYSTEM ADMIN',
-                                joinedAt: firebase.database.ServerValue.TIMESTAMP,
-                                uid: cred.user.uid
-                            });
+                    if (email === 'Admin1@gmail.com' && pass === 'Harshvardhan' && isUserNotFound) {
+                        if (confirm("Primary Admin account not found or credentials unrecognized. Would you like to initialize/register this account now?")) {
+                            try {
+                                cred = await auth.createUserWithEmailAndPassword(email, pass);
+                                // Set essential user data for the new admin
+                                await db.ref('users').child(cred.user.uid).set({
+                                    name: 'Harshvardhan',
+                                    email: email,
+                                    coins: 0,
+                                    rank: 'SYSTEM ADMIN',
+                                    joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                                    uid: cred.user.uid
+                                });
+                            } catch (regErr) {
+                                // If they already exist, just throw the original login error
+                                if (regErr.code === 'auth/email-already-in-use') {
+                                    throw loginErr;
+                                }
+                                throw regErr;
+                            }
                         } else {
                             throw loginErr;
                         }
