@@ -768,15 +768,15 @@
                 }
 
                 // Sync UI
-                document.getElementById('user-display-name').textContent = userData.name;
-                document.getElementById('user-coins').textContent = userData.coins.toLocaleString();
-                document.getElementById('user-rank').textContent = userData.rank;
-                document.getElementById('wallet-coins').textContent = userData.coins.toLocaleString();
-                document.getElementById('my-referral-code').textContent = userData.referralCode;
-                document.getElementById('profile-name').textContent = userData.name;
-                document.getElementById('profile-id').textContent = `UID: ${userData.uid.substr(0, 10)}...`;
-                document.getElementById('profile-xp').textContent = `Level ${userData.level}`;
-                document.getElementById('profile-date').textContent = new Date(userData.joinedAt).toLocaleDateString();
+                document.getElementById('user-display-name').textContent = userData.name || 'User';
+                document.getElementById('user-coins').textContent = (userData.coins || 0).toLocaleString();
+                document.getElementById('user-rank').textContent = userData.rank || 'Newcomer';
+                document.getElementById('wallet-coins').textContent = (userData.coins || 0).toLocaleString();
+                document.getElementById('my-referral-code').textContent = userData.referralCode || 'N/A';
+                document.getElementById('profile-name').textContent = userData.name || 'User';
+                document.getElementById('profile-id').textContent = `UID: ${userData.uid ? userData.uid.substr(0, 10) : '...'}...`;
+                document.getElementById('profile-xp').textContent = `Level ${userData.level || 1}`;
+                document.getElementById('profile-date').textContent = userData.joinedAt ? new Date(userData.joinedAt).toLocaleDateString() : 'N/A';
                 document.getElementById('profile-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.uid}`;
                 
                 // Progress Bar
@@ -1106,6 +1106,18 @@
         function openSpinWheel() {
             document.getElementById('spin-modal').classList.remove('hidden');
             document.getElementById('modal-container').classList.remove('hidden');
+        }
+
+        function openSocialTasks() {
+            showToast('Social Tasks coming soon in official release!', 'info');
+        }
+
+        function openScratchCard() {
+            showToast('Scratch Card feature is being initialized...', 'info');
+        }
+
+        function openVIPUpgrade() {
+            showToast('VIP Upgrade terminal available for early access users soon!', 'info');
         }
 
         let isSpinning = false;

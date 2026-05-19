@@ -42,7 +42,7 @@
                 <p class="text-gray-500 text-sm">Elite Authorization Required</p>
             </div>
             <div class="space-y-4">
-                <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="admin@virawatch.com">
+                <input type="email" id="admin-email" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Admin1@gmail.com">
                 <input type="password" id="admin-password" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 focus:outline-none focus:border-primary text-white" placeholder="Secret Key">
                 <button onclick="handleAdminLogin()" class="w-full bg-primary hover:bg-primary/90 py-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 text-white">Initialize System</button>
             </div>
@@ -265,12 +265,27 @@
                 const cred = await auth.signInWithEmailAndPassword(email, pass);
                 const uid = cred.user.uid;
                 
-                // Verify if user is admin in database
+                // Check if any admins exist at all
+                const adminsSnap = await db.ref('admins').once('value');
+                
+                if (!adminsSnap.exists()) {
+                    if (confirm("NO ADMINS DETECTED. Do you want to initialize this account as the PRIMARY ADMIN?")) {
+                        await db.ref('admins').child(uid).set(true);
+                        // Also set them as VIP
+                        await db.ref('users').child(uid).update({ isVIP: true, rank: 'SUPER ADMIN' });
+                        alert("PRIMARY ADMIN INITIALIZED. Welcome to the Nucleus.");
+                        enterAdmin();
+                        return;
+                    } else {
+                        await auth.signOut();
+                        return;
+                    }
+                }
+
+                // Normal verification if admins exist
                 const snap = await db.ref('admins').child(uid).once('value');
                 if (snap.exists()) {
-                    document.getElementById('admin-auth').classList.add('hidden');
-                    document.getElementById('admin-panel').classList.remove('hidden');
-                    initAdmin();
+                    enterAdmin();
                 } else {
                     await auth.signOut();
                     alert('ACCESS DENIED: ACCOUNT NOT IN ELITE REGISTRY');
@@ -278,6 +293,12 @@
             } catch (err) {
                 alert('SYSTEM ERROR: ' + err.message);
             }
+        }
+
+        function enterAdmin() {
+            document.getElementById('admin-auth').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            initAdmin();
         }
 
         function initAdmin() {
